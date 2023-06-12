@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Test API</title>
+  <style>
+    td, th {
+      border: 1px solid #dddddd;
+      text-align: left;
+      padding: 8px;
+    }
+
+    tr:nth-child(even) {
+      background-color: #dddddd;
+    }
+  </style>
+</head>
+<body>
+<h1>Test API</h1>
+<button onclick="getData()">Get Data</button>
+<table id="output"></table>
+
+<script>
+    function getData() {
+        fetch('/data')
+            .then(response => response.json())
+            .then(data => {
+                const outputElement = document.getElementById("output");
+                outputElement.innerHTML = "<tr><th></th><th>Hesap Kodu</th><th>Toplam Borç</th></tr>";
+                const topLevelAccounts = data.filter(item => item.hesap_kodu.split('.').length === 2);
+                const topLevelAccountCodes = topLevelAccounts.map(account => account.hesap_kodu.split('.')[0]);
+                const uniqueTopLevelAccountCodes = [...new Set(topLevelAccountCodes)];
+                uniqueTopLevelAccountCodes.forEach(topLevelAccountCode => {
+                    const topLevelRow = document.createElement("tr");
+                    const topLevelCodeCell = document.createElement("td");
+                    topLevelCodeCell.textContent = topLevelAccountCode;
+                    topLevelRow.appendChild(topLevelCodeCell);
+                    const topLevelTotalDebtCell = document.createElement("td");
+                    const secondLevelAccounts = data.filter(item => item.hesap_kodu.startsWith(topLevelAccountCode + '.') && item.hesap_kodu.split('.').length === 2);
+                    topLevelTotalDebtCell.textContent = secondLevelAccounts.reduce((total, account) => total + Number(account.borc), 0);
+                    topLevelRow.appendChild(topLevelTotalDebtCell);
+                    outputElement.appendChild(topLevelRow);
+                    const expandButtonCell = document.createElement("td");
+                    const expandButton = document.createElement("button");
+                    expandButton.textContent = "+";
+                    expandButton.addEventListener('click', () => {
+                        if (expandButton.textContent === "+") {
+                            expandButton.textContent = "-";
+                            secondLevelAccounts.forEach(secondLevelAccount => {
+                                const secondLevelRow = document.createElement("tr");
+                                secondLevelRow.classList.add("second-level-row-" + topLevelAccountCode);
+                                const secondLevelCodeCell = document.createElement("td");
+                                secondLevelCodeCell.textContent = secondLevelAccount.hesap_kodu;
+                                secondLevelRow.appendChild(secondLevelCodeCell);
+                                const secondLevelTotalDebtCell = document.createElement("td");
+                                secondLevelTotalDebtCell.textContent = Number(secondLevelAccount.borc);
+                                secondLevelRow.appendChild(secondLevelTotalDebtCell);
+                                outputElement.insertBefore(secondLevelRow, topLevelRow.nextSibling);
+                                const thirdLevelAccounts = data.filter(item => item.hesap_kodu.startsWith(secondLevelAccount.hesap_kodu + '.') && item.hesap_kodu.split('.').length === 3);
+                                const expandSecondButtonCell = document.createElement("td");
+                                const expandSecondButton = document.createElement("button");
+                                expandSecondButton.textContent = "+";
+                                expandSecondButton.addEventListener('click', () => {
+                                    if (expandSecondButton.textContent === "+") {
+                                        expandSecondButton.textContent = "-";
+                                        thirdLevelAccounts.forEach(thirdLevelAccount => {
+                                            const thirdLevelRow = document.createElement("tr");
+                                            thirdLevelRow.classList.add("third-level-row-" + topLevelAccountCode);
+                                            const thirdLevelCodeCell = document.createElement("td");
+                                            const thirdLevelCodeCell2 = document.createElement("td");
+                                            thirdLevelCodeCell.textContent = thirdLevelAccount.hesap_kodu;
+                                            thirdLevelRow.appendChild(thirdLevelCodeCell2);
+                                            thirdLevelRow.appendChild(thirdLevelCodeCell);
+                                            const thirdLevelTotalDebtCell = document.createElement("td");
+                                            thirdLevelTotalDebtCell.textContent = Number(thirdLevelAccount.borc);
+                                            thirdLevelRow.appendChild(thirdLevelTotalDebtCell);
+                                            outputElement.insertBefore(thirdLevelRow, secondLevelRow.nextSibling);
+                                        });
+                                    } else {
+                                        expandSecondButton.textContent = "+";
+                                        document.querySelectorAll(".third-level-row-" + topLevelAccountCode).forEach(row => row.remove());
+                                    }
+                                });
+                                expandSecondButtonCell.appendChild(expandSecondButton);
+                                secondLevelRow.insertBefore(expandSecondButtonCell, secondLevelRow.firstChild);
+                            });
+                        } else {
+                            expandButton.textContent = "+";
+                            document.querySelectorAll(".second-level-row-" + topLevelAccountCode).forEach(row => row.remove());
+                        }
+                    });
+                    expandButtonCell.appendChild(expandButton);
+                    topLevelRow.insertBefore(expandButtonCell, topLevelRow.firstChild);
+                });
+            });
+    }
+</script>
+</body>
+</html>
